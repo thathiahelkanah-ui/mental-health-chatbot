@@ -28,14 +28,13 @@ const buildTitle = (message) => {
   return trimmed.length <= 30 ? trimmed : `${trimmed.slice(0, 30)}...`;
 };
 
-function Chat({ token, user, onLogout, darkMode }) {
+function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChange }) {
   const storageKey = useMemo(() => `chatbot-history-${user?.id || user?.username || "guest"}`, [user]);
   const [chats, setChats] = useState([]);
   const [activeChatId, setActiveChatId] = useState("");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef(null);
 
   const normalizeChat = (chat) => ({
@@ -109,7 +108,7 @@ function Chat({ token, user, onLogout, darkMode }) {
     setActiveChatId(nextChat.id);
     setInput("");
     setError("");
-    setSidebarOpen(false);
+    onSidebarOpenChange(false);
   };
 
   const updateActiveChatMessages = (updater) => {
@@ -208,44 +207,33 @@ function Chat({ token, user, onLogout, darkMode }) {
         onNewChat={handleNewChat}
         onSelectChat={(chatId) => {
           setActiveChatId(chatId);
-          setSidebarOpen(false);
+          onSidebarOpenChange(false);
         }}
         user={user}
         onLogout={() => {
-          setSidebarOpen(false);
+          onSidebarOpenChange(false);
           onLogout();
         }}
         darkMode={darkMode}
         sidebarOpen={sidebarOpen}
-        onCloseSidebar={() => setSidebarOpen(false)}
+        onCloseSidebar={() => onSidebarOpenChange(false)}
       />
 
       <div
         className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`}
-        onClick={() => setSidebarOpen(false)}
+        onClick={() => onSidebarOpenChange(false)}
         aria-hidden={!sidebarOpen}
       />
 
       <div className="chat-panel">
-        <div className="chat-panel-header">
-          <div className="chat-header-main">
-            <button
-              className="sidebar-menu-button"
-              type="button"
-              onClick={() => setSidebarOpen((current) => !current)}
-            >
-              &#9776;
-            </button>
-            <p className="eyebrow">Supportive Space</p>
-            <h2>{activeChat?.title || "New chat"}</h2>
-          </div>
-          <span className={`chat-status ${loading ? "busy" : ""}`}>
-            {loading ? "Assistant is typing..." : "Ready"}
-          </span>
-        </div>
-
         <div className="chat-body">
           <div className="chat-window">
+            <div className="chat-status-row">
+              <span className="chat-thread-title">{activeChat?.title || "New chat"}</span>
+              <span className={`chat-status ${loading ? "busy" : ""}`}>
+                {loading ? "Assistant is typing..." : "Ready"}
+              </span>
+            </div>
             <div className="chat-thread">
               {messages.map((message, index) => (
                 <Message
