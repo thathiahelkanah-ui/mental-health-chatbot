@@ -35,6 +35,7 @@ function Chat({ token, user, onLogout, darkMode }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef(null);
 
   const normalizeChat = (chat) => ({
@@ -108,6 +109,7 @@ function Chat({ token, user, onLogout, darkMode }) {
     setActiveChatId(nextChat.id);
     setInput("");
     setError("");
+    setSidebarOpen(false);
   };
 
   const updateActiveChatMessages = (updater) => {
@@ -173,7 +175,11 @@ function Chat({ token, user, onLogout, darkMode }) {
     setLoading(true);
 
     try {
-      const response = await sendChatMessage(token, trimmedInput, activeChat?.isDraft ? undefined : activeChat?.id);
+      const response = await sendChatMessage(
+        token,
+        trimmedInput,
+        activeChat?.isDraft ? undefined : activeChat?.id
+      );
       const nextChatId = response.data?.chatId || activeChat?.id;
       const nextTitle = response.data?.title || buildTitle(trimmedInput);
       const replyText = response.data?.reply || "I am here with you.";
@@ -200,15 +206,36 @@ function Chat({ token, user, onLogout, darkMode }) {
         chats={chats}
         activeChatId={activeChat?.id}
         onNewChat={handleNewChat}
-        onSelectChat={setActiveChatId}
+        onSelectChat={(chatId) => {
+          setActiveChatId(chatId);
+          setSidebarOpen(false);
+        }}
         user={user}
-        onLogout={onLogout}
+        onLogout={() => {
+          setSidebarOpen(false);
+          onLogout();
+        }}
         darkMode={darkMode}
+        sidebarOpen={sidebarOpen}
+        onCloseSidebar={() => setSidebarOpen(false)}
+      />
+
+      <div
+        className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden={!sidebarOpen}
       />
 
       <div className="chat-panel">
         <div className="chat-panel-header">
-          <div>
+          <div className="chat-header-main">
+            <button
+              className="sidebar-menu-button"
+              type="button"
+              onClick={() => setSidebarOpen((current) => !current)}
+            >
+              &#9776;
+            </button>
             <p className="eyebrow">Supportive Space</p>
             <h2>{activeChat?.title || "New chat"}</h2>
           </div>

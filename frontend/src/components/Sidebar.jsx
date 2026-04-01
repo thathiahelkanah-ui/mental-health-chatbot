@@ -1,11 +1,24 @@
-function Sidebar({ chats, activeChatId, onNewChat, onSelectChat, user, onLogout, darkMode }) {
+function Sidebar({
+  chats,
+  activeChatId,
+  onNewChat,
+  onSelectChat,
+  user,
+  onLogout,
+  darkMode,
+  sidebarOpen,
+  onCloseSidebar,
+}) {
   return (
-    <aside className={`chat-sidebar ${darkMode ? "theme-dark" : "theme-light"}`}>
+    <aside className={`chat-sidebar ${darkMode ? "theme-dark" : "theme-light"} ${sidebarOpen ? "open" : ""}`}>
       <div className="sidebar-top">
         <div className="sidebar-brand">
           <p className="sidebar-label">Workspace</p>
           <h2>Chats</h2>
         </div>
+        <button className="sidebar-close-button" type="button" onClick={onCloseSidebar}>
+          &times;
+        </button>
         <button className="sidebar-action" type="button" onClick={onNewChat}>
           + New Chat
         </button>
