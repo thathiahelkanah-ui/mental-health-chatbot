@@ -376,7 +376,7 @@ body.dark .text-button {
   border-right: 1px solid rgba(148, 163, 184, 0.14);
   background: #f3f4f6;
   color: #111827;
-  overflow-y: auto;
+  overflow: hidden;
   transition: transform 0.25s ease, background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
 
@@ -386,14 +386,15 @@ body.dark .chat-sidebar {
   color: #f9fafb;
 }
 
-.sidebar-top {
+.sidebar-header {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .sidebar-brand h2,
-.sidebar-top h2 {
+.sidebar-header h2 {
   margin: 4px 0 0;
   font-size: 1.15rem;
 }
@@ -420,13 +421,38 @@ body.dark .chat-sidebar {
   color: #ffffff;
 }
 
-.sidebar-history {
+.chat-list {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 10px;
   min-height: 0;
   overflow-y: auto;
+  padding-right: 4px;
+  scroll-behavior: smooth;
+}
+
+.sidebar-history {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 0 4px;
+}
+
+.chat-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.45);
+}
+
+body.dark .chat-list::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.7);
 }
 
 .history-item {
@@ -729,6 +755,13 @@ body.dark .status-message.success {
 
   .chat-sidebar.open {
     transform: translateX(0);
+  }
+
+  .sidebar-header {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .sidebar-close-button {

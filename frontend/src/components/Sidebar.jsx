@@ -11,7 +11,7 @@ function Sidebar({
 }) {
   return (
     <aside className={`chat-sidebar ${darkMode ? "theme-dark" : "theme-light"} ${sidebarOpen ? "open" : ""}`}>
-      <div className="sidebar-top">
+      <div className="sidebar-header">
         <div className="sidebar-brand">
           <p className="sidebar-label">Workspace</p>
           <h2>Chats</h2>
@@ -24,23 +24,25 @@ function Sidebar({
         </button>
       </div>
 
-      <div className="sidebar-history">
+      <div className="chat-list">
         <p className="sidebar-label">Recent</p>
-        {chats.length > 0 ? (
-          chats.map((chat) => (
-            <button
-              key={chat.id}
-              className={`history-item ${chat.id === activeChatId ? "active" : ""}`}
-              type="button"
-              onClick={() => onSelectChat(chat.id)}
-            >
-              <span className="history-title">{chat.title}</span>
-              <span className="history-count">{chat.messages.length} messages</span>
-            </button>
-          ))
-        ) : (
-          <div className="sidebar-empty">No chats yet</div>
-        )}
+        <div className="sidebar-history">
+          {chats.length > 0 ? (
+            chats.map((chat) => (
+              <button
+                key={chat.id}
+                className={`history-item ${chat.id === activeChatId ? "active" : ""}`}
+                type="button"
+                onClick={() => onSelectChat(chat.id)}
+              >
+                <span className="history-title">{chat.title}</span>
+                <span className="history-count">{chat.messages.length} messages</span>
+              </button>
+            ))
+          ) : (
+            <div className="sidebar-empty">No chats yet</div>
+          )}
+        </div>
       </div>
 
       <div className="sidebar-footer">
