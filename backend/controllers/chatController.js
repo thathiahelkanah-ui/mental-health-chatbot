@@ -19,7 +19,7 @@ const sendError = (res, statusCode, message) => {
 
 const buildChatTitle = (message) => message.slice(0, 30).trim();
 
-export const createChatReply = async (req, res, next) => {
+export const sendMessage = async (req, res, next) => {
   console.log("[CHAT] Chat endpoint hit");
 
   try {
@@ -118,11 +118,9 @@ export const createChatReply = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: "Chat response generated successfully.",
       data: {
         chatId: chat._id,
-        title: chat.title,
-        reply: aiResponse,
+        messages: chat.messages,
       },
     });
   } catch (error) {

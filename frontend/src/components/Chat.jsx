@@ -3,24 +3,10 @@ import Message from "./Message.jsx";
 import Sidebar from "./Sidebar.jsx";
 import { getChats, sendChatMessage } from "../services/api.js";
 
-const createChatId = () => `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-const createWelcomeMessage = (username) => ({
-  role: "bot",
-  text: `Hi${username ? ` ${username}` : ""}, I am here to listen. What is on your mind today?`,
-});
-
 const createLoadingMessage = () => ({
   role: "bot",
   text: "Typing...",
   loading: true,
-});
-
-const createNewChat = (username) => ({
-  id: createChatId(),
-  title: "New chat",
-  messages: [createWelcomeMessage(username)],
-  isDraft: true,
 });
 
 const buildTitle = (message) => {
@@ -31,7 +17,8 @@ const buildTitle = (message) => {
 function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChange }) {
   const storageKey = useMemo(() => `chatbot-history-${user?.id || user?.username || "guest"}`, [user]);
   const [chats, setChats] = useState([]);
-  const [activeChatId, setActiveChatId] = useState("");
+  const [activeChatId, setActiveChatId] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -50,17 +37,15 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
       try {
         const response = await getChats(token);
         const nextChats = Array.isArray(response.data) ? response.data.map(normalizeChat) : [];
+        setChats(nextChats);
 
         if (nextChats.length > 0) {
-          setChats(nextChats);
           setActiveChatId(nextChats[0].id);
-          localStorage.setItem(storageKey, JSON.stringify(nextChats));
-          return;
+          setMessages(nextChats[0].messages || []);
+        } else {
+          setActiveChatId(null);
+          setMessages([]);
         }
-
-        const firstChat = createNewChat(user?.username);
-        setChats([firstChat]);
-        setActiveChatId(firstChat.id);
       } catch (apiError) {
         const savedChats = localStorage.getItem(storageKey);
 
@@ -69,6 +54,7 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
           if (Array.isArray(parsedChats) && parsedChats.length > 0) {
             setChats(parsedChats);
             setActiveChatId(parsedChats[0].id);
+            setMessages(parsedChats[0].messages || []);
             return;
           }
         }
@@ -80,9 +66,9 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
           return;
         }
 
-        const firstChat = createNewChat(user?.username);
-        setChats([firstChat]);
-        setActiveChatId(firstChat.id);
+        setChats([]);
+        setActiveChatId(null);
+        setMessages([]);
       }
     };
 
@@ -95,100 +81,85 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
     }
   }, [chats, storageKey]);
 
-  const activeChat = chats.find((chat) => chat.id === activeChatId) || chats[0];
-  const messages = activeChat?.messages || [];
+  const activeChat = chats.find((chat) => chat.id === activeChatId) || null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleNewChat = () => {
-    const nextChat = createNewChat(user?.username);
-    setChats((currentChats) => [nextChat, ...currentChats]);
-    setActiveChatId(nextChat.id);
+    setActiveChatId(null);
+    setMessages([]);
     setInput("");
     setError("");
     onSidebarOpenChange(false);
   };
 
-  const updateActiveChatMessages = (updater) => {
-    setChats((currentChats) =>
-      currentChats.map((chat) => {
-        if (chat.id !== activeChatId) {
-          return chat;
-        }
-
-        const nextMessages = updater(chat.messages);
-        const firstUserMessage = nextMessages.find((message) => message.role === "user");
-
-        return {
-          ...chat,
-          title: firstUserMessage ? buildTitle(firstUserMessage.text) : chat.title,
-          messages: nextMessages,
-        };
-      })
-    );
-  };
-
-  const replaceActiveChat = (updater) => {
+  const syncChatInList = (chatId, nextMessages, fallbackTitle) => {
     setChats((currentChats) => {
-      const currentChat = currentChats.find((chat) => chat.id === activeChatId);
+      const existingChat = currentChats.find((chat) => chat.id === chatId);
+      const nextTitle =
+        nextMessages.find((message) => message.role === "user")?.text
+          ? buildTitle(nextMessages.find((message) => message.role === "user").text)
+          : fallbackTitle;
 
-      if (!currentChat) {
-        return currentChats;
+      if (!existingChat) {
+        return [
+          {
+            id: chatId,
+            title: nextTitle || "New chat",
+            messages: nextMessages,
+          },
+          ...currentChats,
+        ];
       }
 
-      const nextChat = updater(currentChat);
-      const otherChats = currentChats.filter((chat) => chat.id !== activeChatId);
-      return [nextChat, ...otherChats];
-    });
-  };
+      const updatedChats = currentChats.map((chat) =>
+        chat.id === chatId
+          ? {
+              ...chat,
+              title: nextTitle || chat.title,
+              messages: nextMessages,
+            }
+          : chat
+      );
 
-  const persistActiveChat = (chatId, title, replyText) => {
-    replaceActiveChat((currentChat) => ({
-      id: chatId || currentChat.id,
-      title: title || currentChat.title,
-      isDraft: false,
-      messages: currentChat.messages.map((message) =>
-        message.loading ? { role: "bot", text: replyText } : message
-      ),
-    }));
+      const updatedActiveChat = updatedChats.find((chat) => chat.id === chatId);
+      const remainingChats = updatedChats.filter((chat) => chat.id !== chatId);
+      return updatedActiveChat ? [updatedActiveChat, ...remainingChats] : updatedChats;
+    });
   };
 
   const handleSend = async (event) => {
     event.preventDefault();
     const trimmedInput = input.trim();
 
-    if (!trimmedInput || loading || !activeChatId) {
+    if (!trimmedInput || loading) {
       return;
     }
 
     const nextUserMessage = { role: "user", text: trimmedInput };
-    updateActiveChatMessages((currentMessages) => [
-      ...currentMessages,
+    const optimisticMessages = [
+      ...messages,
       nextUserMessage,
       createLoadingMessage(),
-    ]);
+    ];
+
+    setMessages(optimisticMessages);
     setInput("");
     setError("");
     setLoading(true);
 
     try {
-      const response = await sendChatMessage(
-        token,
-        trimmedInput,
-        activeChat?.isDraft ? undefined : activeChat?.id
-      );
-      const nextChatId = response.data?.chatId || activeChat?.id;
-      const nextTitle = response.data?.title || buildTitle(trimmedInput);
-      const replyText = response.data?.reply || "I am here with you.";
+      const response = await sendChatMessage(token, trimmedInput, activeChatId);
+      const nextChatId = response.data?.chatId || activeChatId;
+      const nextMessages = Array.isArray(response.data?.messages) ? response.data.messages : optimisticMessages;
 
-      persistActiveChat(nextChatId, nextTitle, replyText);
       setActiveChatId(nextChatId);
+      setMessages(nextMessages);
+      syncChatInList(nextChatId, nextMessages, buildTitle(trimmedInput));
     } catch (apiError) {
-      updateActiveChatMessages((currentMessages) =>
-        currentMessages.filter((message) => !message.loading)
-      );
+      setMessages((currentMessages) => currentMessages.filter((message) => !message.loading));
       setError(apiError.message || "Failed to send message.");
 
       if (apiError.status === 401) {
@@ -203,10 +174,12 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
     <section className={`chat-workspace ${darkMode ? "theme-dark" : "theme-light"}`}>
       <Sidebar
         chats={chats}
-        activeChatId={activeChat?.id}
+        activeChatId={activeChatId}
         onNewChat={handleNewChat}
         onSelectChat={(chatId) => {
           setActiveChatId(chatId);
+          const selectedChat = chats.find((chat) => chat.id === chatId);
+          setMessages(selectedChat?.messages || []);
           onSidebarOpenChange(false);
         }}
         user={user}
