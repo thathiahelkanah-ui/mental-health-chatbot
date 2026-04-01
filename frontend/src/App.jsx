@@ -4,10 +4,12 @@ import Register from "./components/Register.jsx";
 import Chat from "./components/Chat.jsx";
 
 const STORAGE_KEY = "chatbot-auth";
+const THEME_KEY = "chatbot-theme";
 
 function App() {
   const [authMode, setAuthMode] = useState("login");
   const [authFeedback, setAuthFeedback] = useState("");
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem(THEME_KEY) === "dark");
   const [auth, setAuth] = useState(() => {
     const savedAuth = localStorage.getItem(STORAGE_KEY);
     return savedAuth ? JSON.parse(savedAuth) : { token: "", user: null };
@@ -16,6 +18,14 @@ function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(auth));
   }, [auth]);
+
+  useEffect(() => {
+    localStorage.setItem(THEME_KEY, darkMode ? "dark" : "light");
+  }, [darkMode]);
+
+  useEffect(() => {
+    document.body.className = darkMode ? "dark" : "light";
+  }, [darkMode]);
 
   const handleAuthSuccess = ({ token, user }) => {
     setAuth({ token, user });
@@ -36,6 +46,20 @@ function App() {
   return (
     <div className="app-shell">
       <div className="app-backdrop" />
+      <button
+        className="theme-toggle"
+        type="button"
+        onClick={() => setDarkMode((current) => !current)}
+        style={{
+          position: "fixed",
+          top: "16px",
+          right: "16px",
+          zIndex: 1000,
+        }}
+      >
+        {darkMode ? "Light mode" : "Dark mode"}
+      </button>
+
       <main className={`app-card ${auth.token ? "chat-mode" : "auth-mode"}`}>
         <header className="app-header">
           <div>
@@ -45,7 +69,7 @@ function App() {
         </header>
 
         {auth.token ? (
-          <Chat token={auth.token} user={auth.user} onLogout={handleLogout} />
+          <Chat token={auth.token} user={auth.user} onLogout={handleLogout} darkMode={darkMode} />
         ) : authMode === "login" ? (
           <Login
             onAuthSuccess={handleAuthSuccess}

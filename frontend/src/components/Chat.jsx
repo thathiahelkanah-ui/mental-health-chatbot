@@ -28,7 +28,7 @@ const buildTitle = (message) => {
   return trimmed.length <= 30 ? trimmed : `${trimmed.slice(0, 30)}...`;
 };
 
-function Chat({ token, user, onLogout }) {
+function Chat({ token, user, onLogout, darkMode }) {
   const storageKey = useMemo(() => `chatbot-history-${user?.id || user?.username || "guest"}`, [user]);
   const [chats, setChats] = useState([]);
   const [activeChatId, setActiveChatId] = useState("");
@@ -195,7 +195,7 @@ function Chat({ token, user, onLogout }) {
   };
 
   return (
-    <section className="chat-workspace">
+    <section className={`chat-workspace ${darkMode ? "theme-dark" : "theme-light"}`}>
       <Sidebar
         chats={chats}
         activeChatId={activeChat?.id}
@@ -203,6 +203,7 @@ function Chat({ token, user, onLogout }) {
         onSelectChat={setActiveChatId}
         user={user}
         onLogout={onLogout}
+        darkMode={darkMode}
       />
 
       <div className="chat-panel">

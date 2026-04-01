@@ -1,6 +1,6 @@
-function Sidebar({ chats, activeChatId, onNewChat, onSelectChat, user, onLogout }) {
+function Sidebar({ chats, activeChatId, onNewChat, onSelectChat, user, onLogout, darkMode }) {
   return (
-    <aside className="chat-sidebar">
+    <aside className={`chat-sidebar ${darkMode ? "theme-dark" : "theme-light"}`}>
       <div className="sidebar-top">
         <div className="sidebar-brand">
           <p className="sidebar-label">Workspace</p>
