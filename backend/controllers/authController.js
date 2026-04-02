@@ -30,11 +30,11 @@ export const registerUser = async (req, res, next) => {
   console.log("[AUTH] Register endpoint hit");
 
   try {
-    const { username, password, phone } = req.body;
+    const { username, password } = req.body;
     console.log("Incoming username:", username);
 
-    if (!username || !password || !phone) {
-      return res.status(400).json({ message: "Username, phone, and password are required" });
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password are required" });
     }
 
     if (password.length < 6) {
@@ -45,7 +45,7 @@ export const registerUser = async (req, res, next) => {
     console.log("Trimmed username:", trimmedUsername);
 
     if (!trimmedUsername) {
-      return res.status(400).json({ message: "Username, phone, and password are required" });
+      return res.status(400).json({ message: "Username and password are required" });
     }
 
     const existingUser = await User.findOne({ username: trimmedUsername });
@@ -55,35 +55,18 @@ export const registerUser = async (req, res, next) => {
       return sendError(res, 409, "Username already exists.");
     }
 
-    const trimmedPhone = phone.trim();
-
-    if (!trimmedPhone) {
-      return res.status(400).json({ message: "Username, phone, and password are required" });
-    }
-
-    const existingPhone = await User.findOne({ phone: trimmedPhone });
-
-    if (existingPhone) {
-      return sendError(res, 409, "Phone number already exists.");
-    }
-
-    const user = await User.create({ username: trimmedUsername, phone: trimmedPhone, password });
+    const user = await User.create({ username: trimmedUsername, password });
 
     return sendSuccess(res, 201, "User registered successfully.", {
       user: {
         id: user._id,
         username: user.username,
-        phone: user.phone,
       },
     });
   } catch (error) {
     console.error("[AUTH] Register error:", error.message);
 
     if (error.code === 11000) {
-      if (error.keyPattern?.phone) {
-        return sendError(res, 409, "Phone number already exists.");
-      }
-
       return sendError(res, 409, "Username already exists.");
     }
 
@@ -124,7 +107,6 @@ export const loginUser = async (req, res, next) => {
       user: {
         id: user._id,
         username: user.username,
-        phone: user.phone,
       },
     });
   } catch (error) {

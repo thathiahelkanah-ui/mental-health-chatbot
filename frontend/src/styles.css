@@ -284,42 +284,9 @@ body.dark .hint-text {
 
 body.dark .auth-form input,
 body.dark .chat-input-row input {
-  border-color: rgba(71, 85, 105, 0.9);
-  background: rgba(15, 23, 42, 0.95);
-  color: #f9fafb;
-}
-
-.phone-field .form-control {
-  width: 100% !important;
-  height: auto !important;
-  padding: 14px 16px 14px 52px !important;
-  border: 1px solid #cddceb !important;
-  border-radius: 18px !important;
-  background: rgba(255, 255, 255, 0.96) !important;
-  color: #16334c !important;
-  font: inherit !important;
-}
-
-.phone-field .form-control:focus {
-  border-color: #5c8fe0 !important;
-  box-shadow: 0 0 0 4px rgba(92, 143, 224, 0.15) !important;
-}
-
-.phone-field .flag-dropdown {
-  border: 1px solid #cddceb !important;
-  border-radius: 18px 0 0 18px !important;
-  background: rgba(255, 255, 255, 0.96) !important;
-}
-
-body.dark .phone-field .form-control {
   border-color: rgba(71, 85, 105, 0.9) !important;
   background: rgba(15, 23, 42, 0.95) !important;
   color: #f9fafb !important;
-}
-
-body.dark .phone-field .flag-dropdown {
-  border-color: rgba(71, 85, 105, 0.9) !important;
-  background: rgba(15, 23, 42, 0.95) !important;
 }
 
 .password-field {
