@@ -1,5 +1,11 @@
 function Message({ message }) {
-  const { role, text, typing = false, time } = message;
+  const { role, text, typing = false, createdAt } = message;
+  const formattedTime = createdAt
+    ? new Date(createdAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
 
   return (
     <article className={`message-row ${role === "user" ? "user" : "bot"}`}>
@@ -14,7 +20,7 @@ function Message({ message }) {
             <span />
           </div>
         ) : null}
-        {time ? <div className="message-time">{time}</div> : null}
+        {formattedTime ? <div className="message-time">{formattedTime}</div> : null}
       </div>
     </article>
   );

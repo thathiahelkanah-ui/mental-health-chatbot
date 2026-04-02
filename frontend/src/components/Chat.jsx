@@ -3,22 +3,12 @@ import Message from "./Message.jsx";
 import Sidebar from "./Sidebar.jsx";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
-const getTime = () =>
-  new Date().toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-const getDate = () => new Date().toISOString();
-const formatTime = (dateString) =>
-  new Date(dateString).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+const getCreatedAt = () => new Date().toISOString();
 
-const formatDateLabel = (dateString) => {
-  if (!dateString) return null;
+const formatDateLabel = (createdAt) => {
+  if (!createdAt) return null;
 
-  const date = new Date(dateString);
+  const date = new Date(createdAt);
 
   if (Number.isNaN(date.getTime())) return null;
 
@@ -51,12 +41,11 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
   const [chatToDelete, setChatToDelete] = useState(null);
   const messagesEndRef = useRef(null);
   const buildMessage = (message) => {
-    const date = message.date || getDate();
+    const createdAt = message.createdAt || message.date || getCreatedAt();
 
     return {
       ...message,
-      date,
-      time: message.time || formatTime(date),
+      createdAt,
     };
   };
 
@@ -358,12 +347,12 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
             </div>
             <div className="chat-thread">
               {messages.map((message, index) => {
-                const currentDate = formatDateLabel(message.date);
-                const prevDate = index > 0 ? formatDateLabel(messages[index - 1].date) : null;
+                const currentDate = formatDateLabel(message.createdAt);
+                const prevDate = index > 0 ? formatDateLabel(messages[index - 1].createdAt) : null;
                 const showDate = index === 0 ? !!currentDate : currentDate !== prevDate;
 
                 return (
-                  <div key={`${activeChatId || "new"}-${message.role}-${message.time || "no-time"}-${index}`}>
+                  <div key={`${activeChatId || "new"}-${message.role}-${message.createdAt || "no-time"}-${index}`}>
                     {showDate ? <div className="date-separator">{currentDate}</div> : null}
                     <Message message={message} />
                   </div>
@@ -371,7 +360,7 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
               })}
               {isTyping ? (
                 <div className="typing-row">
-                  <Message message={{ role: "bot", text: "Typing...", typing: true, time: getTime() }} />
+                  <Message message={{ role: "bot", text: "Typing...", typing: true, createdAt: getCreatedAt() }} />
                 </div>
               ) : null}
               <div ref={messagesEndRef} />
