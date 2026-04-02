@@ -1,165 +1,298 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Message from "./Message.jsx";
 import Sidebar from "./Sidebar.jsx";
-import { getChats, sendChatMessage } from "../services/api.js";
 
-const createLoadingMessage = () => ({
-  role: "bot",
-  text: "Typing...",
-  loading: true,
-});
+const BASE_URL = import.meta.env.VITE_API_URL;
+const getTime = () =>
+  new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+const getDate = () => new Date().toISOString();
+const formatTime = (dateString) =>
+  new Date(dateString).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-const buildTitle = (message) => {
-  const trimmed = message.trim();
-  return trimmed.length <= 30 ? trimmed : `${trimmed.slice(0, 30)}...`;
+const formatDateLabel = (dateString) => {
+  if (!dateString) return null;
+
+  const date = new Date(dateString);
+
+  if (Number.isNaN(date.getTime())) return null;
+
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const isToday = date.toDateString() === today.toDateString();
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  if (isToday) return "Today";
+  if (isYesterday) return "Yesterday";
+
+  return date.toLocaleDateString([], {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 };
 
 function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChange }) {
-  const storageKey = useMemo(() => `chatbot-history-${user?.id || user?.username || "guest"}`, [user]);
   const [chats, setChats] = useState([]);
   const [activeChatId, setActiveChatId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState(null);
   const messagesEndRef = useRef(null);
+  const buildMessage = (message) => {
+    const date = message.date || getDate();
 
-  const normalizeChat = (chat) => ({
-    id: chat._id || chat.id,
-    title: chat.title || "New chat",
-    messages: Array.isArray(chat.messages) ? chat.messages : [],
-  });
+    return {
+      ...message,
+      date,
+      time: message.time || formatTime(date),
+    };
+  };
+
+  const normalizeMessages = (nextMessages = []) => nextMessages.map(buildMessage);
+  const isMobileViewport = () => window.innerWidth < 768;
+  const closeSidebarMobile = () => {
+    if (isMobileViewport()) {
+      onSidebarOpenChange(false);
+    }
+  };
+
+  const loadChats = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/chat`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      console.log("Loaded chats:", data);
+
+      if (!res.ok) {
+        const apiError = new Error(data.message || "Failed to load chats.");
+        apiError.status = res.status;
+        throw apiError;
+      }
+
+      const nextChats = (Array.isArray(data) ? data : []).filter(
+        (chat) => Array.isArray(chat.messages) && chat.messages.length > 0
+      );
+      setChats(nextChats);
+      return nextChats;
+    } catch (apiError) {
+      console.error("Failed to load chats:", apiError);
+      setError(apiError.message || "Failed to load chats.");
+
+      if (apiError.status === 401) {
+        onLogout();
+      }
+
+      return [];
+    }
+  };
+
+  const fetchChats = async () => {
+    const loadedChats = await loadChats();
+
+    if (Array.isArray(loadedChats) && loadedChats.length > 0) {
+      return loadedChats;
+    }
+
+    return [];
+  };
+
+  const loadChat = async (id) => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/chat/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      console.log("Loaded chat:", data);
+
+      if (!res.ok) {
+        const apiError = new Error(data.message || "Failed to load chat.");
+        apiError.status = res.status;
+        throw apiError;
+      }
+
+      setMessages(normalizeMessages(Array.isArray(data.messages) ? data.messages : []));
+      setActiveChatId(data.chatId || id);
+      closeSidebarMobile();
+    } catch (apiError) {
+      console.error("Failed to load chat:", apiError);
+      setError(apiError.message || "Failed to load chat.");
+
+      if (apiError.status === 401) {
+        onLogout();
+      }
+    }
+  };
+
+  const fetchGreeting = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/chat/greeting`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      setMessages([
+        buildMessage({
+          role: "bot",
+          text: data.greeting,
+        }),
+      ]);
+    } catch (error) {
+      console.error("Greeting fetch error:", error);
+
+      setMessages([
+        buildMessage({
+          role: "bot",
+          text: "Hi! I'm here for you. What's on your mind today?",
+        }),
+      ]);
+    }
+  };
+
+  const activeChat = chats.find((chat) => chat._id === activeChatId) || null;
 
   useEffect(() => {
-    const loadChats = async () => {
-      setError("");
+    if (!token) return;
+    const initChat = async () => {
+      const existingChats = await fetchChats();
 
-      try {
-        const response = await getChats(token);
-        const nextChats = Array.isArray(response.data) ? response.data.map(normalizeChat) : [];
-        setChats(nextChats);
-
-        if (nextChats.length > 0) {
-          setActiveChatId(nextChats[0].id);
-          setMessages(nextChats[0].messages || []);
-        } else {
-          setActiveChatId(null);
-          setMessages([]);
-        }
-      } catch (apiError) {
-        const savedChats = localStorage.getItem(storageKey);
-
-        if (savedChats) {
-          const parsedChats = JSON.parse(savedChats);
-          if (Array.isArray(parsedChats) && parsedChats.length > 0) {
-            setChats(parsedChats);
-            setActiveChatId(parsedChats[0].id);
-            setMessages(parsedChats[0].messages || []);
-            return;
-          }
-        }
-
-        setError(apiError.message || "Failed to load chats.");
-
-        if (apiError.status === 401) {
-          onLogout();
-          return;
-        }
-
-        setChats([]);
-        setActiveChatId(null);
-        setMessages([]);
+      if (existingChats.length === 0) {
+        await fetchGreeting();
       }
     };
 
-    loadChats();
-  }, [onLogout, storageKey, token, user]);
-
-  useEffect(() => {
-    if (chats.length > 0) {
-      localStorage.setItem(storageKey, JSON.stringify(chats));
-    }
-  }, [chats, storageKey]);
-
-  const activeChat = chats.find((chat) => chat.id === activeChatId) || null;
+    initChat();
+  }, [token]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleNewChat = () => {
+    console.log("New chat started");
+    setMessages([
+      buildMessage({
+        role: "bot",
+        text: "Hi! I'm here for you. What's on your mind today?",
+      }),
+    ]);
     setActiveChatId(null);
-    setMessages([]);
     setInput("");
     setError("");
-    onSidebarOpenChange(false);
+    closeSidebarMobile();
   };
 
-  const syncChatInList = (chatId, nextMessages, fallbackTitle) => {
-    setChats((currentChats) => {
-      const existingChat = currentChats.find((chat) => chat.id === chatId);
-      const nextTitle =
-        nextMessages.find((message) => message.role === "user")?.text
-          ? buildTitle(nextMessages.find((message) => message.role === "user").text)
-          : fallbackTitle;
-
-      if (!existingChat) {
-        return [
-          {
-            id: chatId,
-            title: nextTitle || "New chat",
-            messages: nextMessages,
-          },
-          ...currentChats,
-        ];
-      }
-
-      const updatedChats = currentChats.map((chat) =>
-        chat.id === chatId
-          ? {
-              ...chat,
-              title: nextTitle || chat.title,
-              messages: nextMessages,
-            }
-          : chat
-      );
-
-      const updatedActiveChat = updatedChats.find((chat) => chat.id === chatId);
-      const remainingChats = updatedChats.filter((chat) => chat.id !== chatId);
-      return updatedActiveChat ? [updatedActiveChat, ...remainingChats] : updatedChats;
-    });
-  };
-
-  const handleSend = async (event) => {
-    event.preventDefault();
-    const trimmedInput = input.trim();
-
-    if (!trimmedInput || loading) {
-      return;
-    }
-
-    const nextUserMessage = { role: "user", text: trimmedInput };
-    const optimisticMessages = [
-      ...messages,
-      nextUserMessage,
-      createLoadingMessage(),
-    ];
-
-    setMessages(optimisticMessages);
-    setInput("");
-    setError("");
-    setLoading(true);
+  const confirmDeleteChat = async () => {
+    if (!chatToDelete) return;
 
     try {
-      const response = await sendChatMessage(token, trimmedInput, activeChatId);
-      const nextChatId = response.data?.chatId || activeChatId;
-      const nextMessages = Array.isArray(response.data?.messages) ? response.data.messages : optimisticMessages;
+      const res = await fetch(`${BASE_URL}/api/chat/${chatToDelete}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      setActiveChatId(nextChatId);
-      setMessages(nextMessages);
-      syncChatInList(nextChatId, nextMessages, buildTitle(trimmedInput));
+      const data = await res.json();
+
+      if (!res.ok) {
+        const apiError = new Error(data.message || "Failed to delete chat.");
+        apiError.status = res.status;
+        throw apiError;
+      }
+
+      setChats((prev) => prev.filter((chat) => chat._id !== chatToDelete));
+
+      if (chatToDelete === activeChatId) {
+        handleNewChat();
+      }
+
+      setShowDeleteModal(false);
+      setChatToDelete(null);
     } catch (apiError) {
-      setMessages((currentMessages) => currentMessages.filter((message) => !message.loading));
+      console.error("Delete chat error:", apiError);
+      setError(apiError.message || "Failed to delete chat.");
+    }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setChatToDelete(null);
+  };
+
+  const sendMessage = async (event) => {
+    event.preventDefault();
+
+    if (!input.trim() || loading) return;
+
+    const currentInput = input;
+    const userMessage = buildMessage({ role: "user", text: currentInput });
+    const typingMessage = buildMessage({ role: "bot", text: "Typing...", typing: true });
+
+    setMessages((prev) => [
+      ...prev,
+      userMessage,
+      typingMessage,
+    ]);
+    setInput("");
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          message: currentInput,
+          chatId: activeChatId,
+        }),
+      });
+
+      const data = await res.json();
+      const botReply = data.messages?.[data.messages.length - 1]?.text || "No response";
+
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.typing),
+        buildMessage({ role: "bot", text: botReply }),
+      ]);
+      setActiveChatId(data.chatId || null);
+      await fetchChats();
+
+      console.log("Response:", data);
+    } catch (apiError) {
+      console.error("Error:", apiError);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.typing
+            ? buildMessage({ role: "bot", text: "Something went wrong." })
+            : msg
+        )
+      );
       setError(apiError.message || "Failed to send message.");
 
       if (apiError.status === 401) {
@@ -176,11 +309,10 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
         chats={chats}
         activeChatId={activeChatId}
         onNewChat={handleNewChat}
-        onSelectChat={(chatId) => {
-          setActiveChatId(chatId);
-          const selectedChat = chats.find((chat) => chat.id === chatId);
-          setMessages(selectedChat?.messages || []);
-          onSidebarOpenChange(false);
+        onSelectChat={loadChat}
+        onDeleteChat={(id) => {
+          setChatToDelete(id);
+          setShowDeleteModal(true);
         }}
         user={user}
         onLogout={() => {
@@ -192,13 +324,38 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
         onCloseSidebar={() => onSidebarOpenChange(false)}
       />
 
-      <div
-        className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`}
-        onClick={() => onSidebarOpenChange(false)}
-        aria-hidden={!sidebarOpen}
-      />
+      {sidebarOpen ? (
+        <div
+          className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`}
+          onClick={() => onSidebarOpenChange(false)}
+          aria-hidden={!sidebarOpen}
+        />
+      ) : null}
 
       <div className="chat-panel">
+        {showDeleteModal ? (
+          <div className="modal-overlay" onClick={cancelDelete}>
+            <div
+              className="modal-box"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-chat-title"
+            >
+              <h3 id="delete-chat-title">Delete chat?</h3>
+              <p>This action cannot be undone.</p>
+              <div className="modal-actions">
+                <button type="button" onClick={cancelDelete} className="cancel-btn">
+                  Cancel
+                </button>
+                <button type="button" onClick={confirmDeleteChat} className="delete-btn">
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div className="chat-body">
           <div className="chat-window">
             <div className="chat-status-row">
@@ -208,13 +365,18 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
               </span>
             </div>
             <div className="chat-thread">
-              {messages.map((message, index) => (
-                <Message
-                  key={`${activeChat?.id}-${message.role}-${index}`}
-                  role={message.role}
-                  text={message.text}
-                />
-              ))}
+              {messages.map((message, index) => {
+                const currentDate = formatDateLabel(message.date);
+                const prevDate = index > 0 ? formatDateLabel(messages[index - 1].date) : null;
+                const showDate = index === 0 ? !!currentDate : currentDate !== prevDate;
+
+                return (
+                  <div key={`${activeChatId || "new"}-${message.role}-${message.time || "no-time"}-${index}`}>
+                    {showDate ? <div className="date-separator">{currentDate}</div> : null}
+                    <Message message={message} />
+                  </div>
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
           </div>
@@ -222,7 +384,7 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
           <div className="chat-composer">
             {error ? <p className="status-message error">{error}</p> : null}
 
-            <form className="chat-input-row" onSubmit={handleSend}>
+            <form className="chat-input-row" onSubmit={sendMessage}>
               <input
                 type="text"
                 placeholder={loading ? "Waiting for response..." : "Message the assistant..."}

@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
 import { registerUser } from "../services/api.js";
 
 const PASSWORD_REGEX = /^(?=.*\d).{8,}$/;
@@ -7,6 +9,7 @@ const PASSWORD_HINT = "Password must be at least 8 characters and include a numb
 
 function Register({ onSwitchToLogin, onRegisterSuccess }) {
   const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,7 +40,7 @@ function Register({ onSwitchToLogin, onRegisterSuccess }) {
     setLoading(true);
 
     try {
-      await registerUser({ username, password });
+      await registerUser({ username, password, phone: `+${phone}` });
       onRegisterSuccess("Account created successfully. Please login.");
     } catch (apiError) {
       setError(apiError.message || "Unable to create your account.");
@@ -63,6 +66,19 @@ function Register({ onSwitchToLogin, onRegisterSuccess }) {
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             required
+          />
+        </label>
+
+        <label>
+          Phone Number
+          <PhoneInput
+            country="mu"
+            value={phone}
+            onChange={setPhone}
+            inputStyle={{ width: "100%" }}
+            containerClass="phone-field"
+            inputClass="phone-input"
+            buttonClass="phone-dropdown"
           />
         </label>
 
@@ -129,7 +145,7 @@ function Register({ onSwitchToLogin, onRegisterSuccess }) {
         <button
           className="primary-button"
           type="submit"
-          disabled={loading || !isPasswordStrong || !confirmPassword || !doPasswordsMatch}
+          disabled={loading || !phone || !isPasswordStrong || !confirmPassword || !doPasswordsMatch}
         >
           {loading ? "Creating account..." : "Register"}
         </button>

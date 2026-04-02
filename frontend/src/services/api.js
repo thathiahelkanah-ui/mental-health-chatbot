@@ -1,6 +1,13 @@
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 async function request(path, options = {}) {
+  console.log("[API] Request:", {
+    url: `${BASE_URL}${path}`,
+    method: options.method || "GET",
+    headers: options.headers || {},
+    body: options.body || null,
+  });
+
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: {
@@ -10,10 +17,21 @@ async function request(path, options = {}) {
   });
 
   const data = await response.json().catch(() => ({}));
+  console.log("[API] Response:", {
+    url: `${BASE_URL}${path}`,
+    status: response.status,
+    ok: response.ok,
+    data,
+  });
 
   if (!response.ok) {
     const error = new Error(data.message || "Request failed.");
     error.status = response.status;
+    console.error("[API] Error:", {
+      url: `${BASE_URL}${path}`,
+      status: response.status,
+      data,
+    });
     throw error;
   }
 
@@ -35,6 +53,12 @@ export async function loginUser(payload) {
 }
 
 export async function sendChatMessage(token, message, chatId) {
+  console.log("[API] Sending chat message:", {
+    message,
+    chatId: chatId || null,
+    hasToken: !!token,
+  });
+
   return request("/api/chat", {
     method: "POST",
     headers: {

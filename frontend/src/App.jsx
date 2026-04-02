@@ -6,12 +6,16 @@ import Chat from "./components/Chat.jsx";
 
 const STORAGE_KEY = "chatbot-auth";
 const THEME_KEY = "chatbot-theme";
+const SIDEBAR_KEY = "sidebarOpen";
 
 function App() {
   const [authMode, setAuthMode] = useState("login");
   const [authFeedback, setAuthFeedback] = useState("");
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem(THEME_KEY) === "dark");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem(SIDEBAR_KEY);
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const [auth, setAuth] = useState(() => {
     const savedAuth = localStorage.getItem(STORAGE_KEY);
     return savedAuth ? JSON.parse(savedAuth) : { token: "", user: null };
@@ -24,6 +28,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem(THEME_KEY, darkMode ? "dark" : "light");
   }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_KEY, JSON.stringify(sidebarOpen));
+  }, [sidebarOpen]);
 
   useEffect(() => {
     document.body.className = darkMode ? "dark" : "light";
@@ -51,7 +59,7 @@ function App() {
       <div className="app-backdrop" />
       <header className="app-topbar">
         <button
-          className={`topbar-icon-button ${auth.token ? "" : "hidden-button"}`}
+          className={`topbar-icon-button hamburger ${auth.token ? "" : "hidden-button"}`}
           type="button"
           onClick={() => setSidebarOpen((current) => !current)}
           aria-label="Toggle chat list"
@@ -60,7 +68,12 @@ function App() {
           <FiMenu />
         </button>
 
-        <h1 className="app-topbar-title">Mental Chat</h1>
+        <div className="header-title">
+          <span className="logo" aria-hidden="true">
+            🤖
+          </span>
+          <h1 className="title-text">Chat Buddy</h1>
+        </div>
 
         <button
           className="topbar-icon-button"

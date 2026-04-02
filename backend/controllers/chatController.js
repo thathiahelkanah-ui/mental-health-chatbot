@@ -1,14 +1,9 @@
 import OpenAI from "openai";
 import Chat from "../models/Chat.js";
 
-const SYSTEM_PROMPT = `
-You are a supportive mental health assistant.
-Your tone must always be calm, empathetic, and non-judgmental.
-Keep responses short, practical, and helpful.
-Do not provide medical diagnoses, emergency assessments, or claim to be a licensed professional.
-If the user expresses severe distress, self-harm, suicidal thoughts, or danger, gently encourage them to contact local emergency services, a crisis hotline, or a licensed mental health professional immediately and to reach out to a trusted person nearby.
-When appropriate, suggest grounding techniques, reflection, journaling, breathing, or seeking support.
-`;
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 const sendError = (res, statusCode, message) => {
   return res.status(statusCode).json({
@@ -17,133 +12,126 @@ const sendError = (res, statusCode, message) => {
   });
 };
 
-const buildChatTitle = (message) => message.slice(0, 30).trim();
-
-export const sendMessage = async (req, res, next) => {
-  console.log("[CHAT] Chat endpoint hit");
-
+export const sendMessage = async (req, res) => {
   try {
-    if (!req.user) {
-      console.warn("[CHAT] Request reached controller without authenticated user");
-      return sendError(res, 401, "Not authorized. Please log in and provide a valid token.");
+    const { message } = req.body;
+
+    console.log("Incoming message:", message);
+
+    let reply;
+
+    try {
+      console.log("Calling OpenAI...");
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are a calm, supportive mental health assistant.",
+          },
+          {
+            role: "user",
+            content: message,
+          },
+        ],
+      });
+
+      console.log("OpenAI success");
+
+      reply = completion.choices[0].message.content;
+    } catch (err) {
+      console.error("OpenAI error FULL:", err);
+
+      reply = "Hi, I'm here to listen. What's on your mind?";
     }
 
-    console.log("Incoming body:", req.body);
+    let chat;
 
-    if (!req.body || typeof req.body !== "object") {
-      return res.status(400).json({
-        message: "Message is required",
+    if (!req.body.chatId) {
+      chat = new Chat({
+        user: req.user._id,
+        title: message.substring(0, 25),
+        messages: [],
+      });
+    } else {
+      chat = await Chat.findOne({
+        _id: req.body.chatId,
+        user: req.user._id,
       });
     }
 
-    const { chatId, message } = req.body;
-
-    if (!message || typeof message !== "string" || !message.trim()) {
-      return res.status(400).json({
-        message: "Message is required",
-      });
+    if (!chat) {
+      return sendError(res, 404, "Chat not found.");
     }
 
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    chat.messages.push(
+      { role: "user", text: message },
+      { role: "bot", text: reply }
+    );
 
-    if (!apiKey) {
-      console.error("[CHAT] OPENAI_API_KEY is missing or empty");
-      return sendError(res, 500, "OPENAI_API_KEY is not configured.");
-    }
+    await chat.save();
 
-    const userMessage = message.trim();
-    const model = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
-    const openai = new OpenAI({
-      apiKey,
+    return res.json({
+      chatId: chat._id,
+      messages: chat.messages,
     });
+  } catch (error) {
+    console.error("Server error:", error);
+
+    return res.json({
+      messages: [
+        { role: "bot", text: "Something went wrong." },
+      ],
+    });
+  }
+};
+
+export const generateGreeting = async (req, res) => {
+  try {
+    const username = req.user?.username || "there";
 
     const completion = await openai.chat.completions.create({
-      model,
-      temperature: 0.7,
-      max_tokens: 180,
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: SYSTEM_PROMPT,
+          content: "You are a warm, friendly mental health assistant.",
         },
         {
           role: "user",
-          content: userMessage,
+          content: `Generate a short, welcoming message for a user named ${username}. Be friendly, supportive, and natural.`,
         },
       ],
     });
 
-    const aiResponse = completion.choices?.[0]?.message?.content?.trim();
+    const greeting = completion.choices[0].message.content;
 
-    if (!aiResponse) {
-      return sendError(res, 502, "OpenAI returned an empty response.");
-    }
-
-    console.log("[CHAT] Response generated for user:", req.user.username);
-
-    let chat = null;
-
-    if (chatId) {
-      chat = await Chat.findOne({
-        _id: chatId,
-        user: req.user._id,
-      });
-
-      if (!chat) {
-        return sendError(res, 404, "Chat not found.");
-      }
-    } else {
-      chat = new Chat({
-        user: req.user._id,
-        title: buildChatTitle(userMessage),
-        messages: [],
-      });
-    }
-
-    if (!chat.title) {
-      chat.title = buildChatTitle(userMessage);
-    }
-
-    chat.messages.push({
-      role: "user",
-      text: userMessage,
-    });
-
-    chat.messages.push({
-      role: "bot",
-      text: aiResponse,
-    });
-
-    await chat.save();
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        chatId: chat._id,
-        messages: chat.messages,
-      },
-    });
+    return res.json({ greeting });
   } catch (error) {
-    console.error("[CHAT] OpenAI chat error:", {
-      message: error.message,
-      status: error.status,
-      code: error.code,
-      type: error.type,
-      name: error.name,
-      response: error.response?.data || null,
+    console.error("Greeting error:", error);
+
+    return res.json({
+      greeting: `Hi ${req.user?.username || "there"}! I'm here for you. What's on your mind today?`,
+    });
+  }
+};
+
+export const deleteChat = async (req, res) => {
+  try {
+    const chat = await Chat.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id,
     });
 
-    if (error.status) {
-      return res.status(error.status).json({
-        success: false,
-        message: error.status === 401
-          ? "OpenAI authentication failed. Check OPENAI_API_KEY."
-          : "OpenAI request failed.",
-        error: error.message,
-      });
+    if (!chat) {
+      return res.status(404).json({ message: "Chat not found" });
     }
 
-    return next(error);
+    return res.json({ message: "Chat deleted successfully" });
+  } catch (error) {
+    console.error("Delete chat error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -153,10 +141,7 @@ export const getChats = async (req, res, next) => {
       .sort({ updatedAt: -1 })
       .select("title messages createdAt updatedAt");
 
-    return res.status(200).json({
-      success: true,
-      data: chats,
-    });
+    return res.status(200).json(chats);
   } catch (error) {
     console.error("[CHAT] Get chats error:", error.message);
     return next(error);
@@ -175,8 +160,9 @@ export const getChatById = async (req, res, next) => {
     }
 
     return res.status(200).json({
-      success: true,
-      data: chat,
+      chatId: chat._id,
+      title: chat.title,
+      messages: chat.messages,
     });
   } catch (error) {
     console.error("[CHAT] Get chat by id error:", error.message);

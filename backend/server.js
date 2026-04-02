@@ -1,11 +1,9 @@
 import express from "express";
-import dotenv from "dotenv";
+import "dotenv/config";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
-
-dotenv.config();
 
 const maskedApiKey = process.env.OPENAI_API_KEY
   ? `${process.env.OPENAI_API_KEY.slice(0, 7)}...${process.env.OPENAI_API_KEY.slice(-4)}`
