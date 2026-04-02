@@ -45,6 +45,7 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [chatToDelete, setChatToDelete] = useState(null);
@@ -188,7 +189,7 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isTyping]);
 
   const handleNewChat = () => {
     console.log("New chat started");
@@ -249,15 +250,14 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
 
     const currentInput = input;
     const userMessage = buildMessage({ role: "user", text: currentInput });
-    const typingMessage = buildMessage({ role: "bot", text: "Typing...", typing: true });
 
     setMessages((prev) => [
       ...prev,
       userMessage,
-      typingMessage,
     ]);
     setInput("");
     setLoading(true);
+    setIsTyping(true);
     setError("");
 
     try {
@@ -277,7 +277,7 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
       const botReply = data.messages?.[data.messages.length - 1]?.text || "No response";
 
       setMessages((prev) => [
-        ...prev.filter((msg) => !msg.typing),
+        ...prev,
         buildMessage({ role: "bot", text: botReply }),
       ]);
       setActiveChatId(data.chatId || null);
@@ -286,19 +286,14 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
       console.log("Response:", data);
     } catch (apiError) {
       console.error("Error:", apiError);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.typing
-            ? buildMessage({ role: "bot", text: "Something went wrong." })
-            : msg
-        )
-      );
+      setMessages((prev) => [...prev, buildMessage({ role: "bot", text: "Something went wrong." })]);
       setError(apiError.message || "Failed to send message.");
 
       if (apiError.status === 401) {
         onLogout();
       }
     } finally {
+      setIsTyping(false);
       setLoading(false);
     }
   };
@@ -357,12 +352,9 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
         ) : null}
 
         <div className="chat-body">
-          <div className="chat-window">
+          <div className="messages-container">
             <div className="chat-status-row">
               <span className="chat-thread-title">{activeChat?.title || "New chat"}</span>
-              <span className={`chat-status ${loading ? "busy" : ""}`}>
-                {loading ? "Assistant is typing..." : "Ready"}
-              </span>
             </div>
             <div className="chat-thread">
               {messages.map((message, index) => {
@@ -377,11 +369,16 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
                   </div>
                 );
               })}
+              {isTyping ? (
+                <div className="typing-row">
+                  <Message message={{ role: "bot", text: "Typing...", typing: true, time: getTime() }} />
+                </div>
+              ) : null}
               <div ref={messagesEndRef} />
             </div>
           </div>
 
-          <div className="chat-composer">
+          <div className="input-container">
             {error ? <p className="status-message error">{error}</p> : null}
 
             <form className="chat-input-row" onSubmit={sendMessage}>
