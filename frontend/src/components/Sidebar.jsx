@@ -1,3 +1,7 @@
+/**
+ * File Purpose:
+ * Displays saved chats and account actions for the chat workspace.
+ */
 function Sidebar({
   chats,
   activeChatId,
@@ -10,6 +14,10 @@ function Sidebar({
   sidebarOpen,
   onCloseSidebar,
 }) {
+  /**
+   * Unique Chat List
+   * Deduplicates chats by id before rendering recent history items
+   */
   const uniqueChats = [...new Map(chats.map((chat) => [chat._id, chat])).values()];
 
   return (

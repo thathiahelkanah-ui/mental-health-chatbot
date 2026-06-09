@@ -1,14 +1,30 @@
+/**
+ * File Purpose:
+ * Collects user credentials and starts an authenticated session.
+ */
 import { useState } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { loginUser } from "../services/api.js";
 
-function Login({ onAuthSuccess, onSwitchToRegister, successMessage }) {
+/**
+ * Login form
+ * Handles password visibility, loading state, and API error feedback
+ */
+function Login({ onAuthSuccess, onSwitchToRegister, onForgotPassword, successMessage }) {
+  /**
+   * Form State
+   * Stores credential inputs and submission feedback for the login form
+   */
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  /**
+   * Submits login credentials to the API
+   * Passes the returned token and user profile to the parent app on success
+   */
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -77,6 +93,12 @@ function Login({ onAuthSuccess, onSwitchToRegister, successMessage }) {
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
+
+      <p className="auth-footer">
+        <button className="text-button" type="button" onClick={onForgotPassword}>
+          Forgot Password?
+        </button>
+      </p>
 
       <p className="auth-footer">
         Need an account?{" "}

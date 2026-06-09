@@ -1,3 +1,7 @@
+/**
+ * File Purpose:
+ * Renders mobile chat controls for navigation and theme switching.
+ */
 function Header({ title = "Mental Chat", darkMode, onToggleTheme, onToggleSidebar }) {
   return (
     <header className="mobile-chat-header">

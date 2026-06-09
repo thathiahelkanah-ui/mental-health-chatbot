@@ -1,3 +1,7 @@
+/**
+ * File Purpose:
+ * Displays chat messages and handles user interactions.
+ */
 import { useEffect, useRef, useState } from "react";
 import Message from "./Message.jsx";
 import Sidebar from "./Sidebar.jsx";
@@ -5,6 +9,11 @@ import Sidebar from "./Sidebar.jsx";
 const BASE_URL = import.meta.env.VITE_API_URL;
 const getCreatedAt = () => new Date().toISOString();
 
+/**
+ * Formats a message timestamp for date separators
+ * @param {string} createdAt - ISO date or timestamp value from a message
+ * @returns {string|null} Human-readable date label or null for invalid dates
+ */
 const formatDateLabel = (createdAt) => {
   if (!createdAt) return null;
 
@@ -29,7 +38,15 @@ const formatDateLabel = (createdAt) => {
   });
 };
 
+/**
+ * Chat workspace
+ * Coordinates message state, chat history, API calls, and sidebar actions
+ */
 function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChange }) {
+  /**
+   * Chat State
+   * Tracks saved conversations, the active thread, input text, loading states, and delete confirmation
+   */
   const [chats, setChats] = useState([]);
   const [activeChatId, setActiveChatId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -40,6 +57,12 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [chatToDelete, setChatToDelete] = useState(null);
   const messagesEndRef = useRef(null);
+
+  /**
+   * Normalizes a message object with a display timestamp
+   * @param {object} message - Message returned by the API or created locally
+   * @returns {object} Message with a createdAt value for rendering
+   */
   const buildMessage = (message) => {
     const createdAt = message.createdAt || message.date || getCreatedAt();
 
@@ -49,14 +72,33 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
     };
   };
 
+  /**
+   * Normalizes a list of messages for display
+   * @param {Array} nextMessages - Message list from the API
+   * @returns {Array} Messages with consistent timestamp fields
+   */
   const normalizeMessages = (nextMessages = []) => nextMessages.map(buildMessage);
+
+  /**
+   * Detects mobile viewport width
+   * @returns {boolean} Whether the current viewport should use mobile sidebar behavior
+   */
   const isMobileViewport = () => window.innerWidth < 768;
+
+  /**
+   * Closes the sidebar on mobile after navigation actions
+   * Keeps desktop sidebar behavior unchanged
+   */
   const closeSidebarMobile = () => {
     if (isMobileViewport()) {
       onSidebarOpenChange(false);
     }
   };
 
+  /**
+   * Loads saved chats for the authenticated user
+   * @returns {Promise<Array>} Filtered list of chats containing at least one message
+   */
   const loadChats = async () => {
     try {
       const res = await fetch(`${BASE_URL}/api/chat`, {
@@ -92,6 +134,10 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
     }
   };
 
+  /**
+   * Fetches chats for initial setup
+   * @returns {Promise<Array>} Loaded chats or an empty array
+   */
   const fetchChats = async () => {
     const loadedChats = await loadChats();
 
@@ -102,6 +148,10 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
     return [];
   };
 
+  /**
+   * Loads a selected chat thread
+   * @param {string} id - Chat id selected from the sidebar
+   */
   const loadChat = async (id) => {
     try {
       const res = await fetch(`${BASE_URL}/api/chat/${id}`, {
@@ -133,6 +183,10 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
     }
   };
 
+  /**
+   * Fetches an AI-generated greeting
+   * Provides a local fallback greeting when the API request fails
+   */
   const fetchGreeting = async () => {
     try {
       const res = await fetch(`${BASE_URL}/api/chat/greeting`, {
@@ -163,6 +217,10 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
 
   const activeChat = chats.find((chat) => chat._id === activeChatId) || null;
 
+  /**
+   * Initial Chat Load
+   * Loads existing chats and shows a greeting when the user has no saved history
+   */
   useEffect(() => {
     if (!token) return;
     const initChat = async () => {
@@ -176,10 +234,18 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
     initChat();
   }, [token]);
 
+  /**
+   * Message Scroll Effect
+   * Keeps the newest message or typing indicator visible
+   */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
+  /**
+   * Starts a new chat thread
+   * Resets active chat state and seeds the conversation with a supportive prompt
+   */
   const handleNewChat = () => {
     console.log("New chat started");
     setMessages([
@@ -194,6 +260,10 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
     closeSidebarMobile();
   };
 
+  /**
+   * Confirms deletion of the selected chat
+   * Removes the chat from local state after the backend delete succeeds
+   */
   const confirmDeleteChat = async () => {
     if (!chatToDelete) return;
 
@@ -227,11 +297,19 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
     }
   };
 
+  /**
+   * Cancels pending chat deletion
+   * Clears modal state without calling the API
+   */
   const cancelDelete = () => {
     setShowDeleteModal(false);
     setChatToDelete(null);
   };
 
+  /**
+   * Sends the user's message to the chat API
+   * Optimistically renders the user message and appends the assistant response
+   */
   const sendMessage = async (event) => {
     event.preventDefault();
 
@@ -250,6 +328,10 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
     setError("");
 
     try {
+      /**
+       * Chat API Request
+       * Sends the current message and optional chat id so the backend can create or continue a thread
+       */
       const res = await fetch(`${BASE_URL}/api/chat`, {
         method: "POST",
         headers: {
@@ -349,6 +431,7 @@ function Chat({ token, user, onLogout, darkMode, sidebarOpen, onSidebarOpenChang
               {messages.map((message, index) => {
                 const currentDate = formatDateLabel(message.createdAt);
                 const prevDate = index > 0 ? formatDateLabel(messages[index - 1].createdAt) : null;
+                // Date separators are shown only when the message date changes.
                 const showDate = index === 0 ? !!currentDate : currentDate !== prevDate;
 
                 return (

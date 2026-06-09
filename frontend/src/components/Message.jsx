@@ -1,5 +1,14 @@
+/**
+ * File Purpose:
+ * Renders a single user or assistant message bubble.
+ */
 function Message({ message }) {
   const { role, text, typing = false, createdAt } = message;
+
+  /**
+   * Message Timestamp
+   * Formats persisted message times while allowing untimed messages to omit the label
+   */
   const formattedTime = createdAt
     ? new Date(createdAt).toLocaleTimeString([], {
         hour: "2-digit",

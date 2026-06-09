@@ -1,12 +1,27 @@
+/**
+ * File Purpose:
+ * Creates a new account with client-side password validation.
+ */
 import { useMemo, useState } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { registerUser } from "../services/api.js";
 
 const PASSWORD_REGEX = /^(?=.*\d).{8,}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_HINT = "Password must be at least 8 characters and include a number";
+const EMAIL_HINT = "Please enter a valid email address";
 
+/**
+ * Registration form
+ * Validates credentials before submitting account creation to the API
+ */
 function Register({ onSwitchToLogin, onRegisterSuccess }) {
+  /**
+   * Form State
+   * Tracks credential inputs, recovery email, password visibility, loading, and validation feedback
+   */
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -14,15 +29,29 @@ function Register({ onSwitchToLogin, onRegisterSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  /**
+   * Derived Validation State
+   * Memoizes email, password strength, and match checks used by messages and submit disabling
+   */
+  const isEmailValid = useMemo(() => EMAIL_REGEX.test(email.trim()), [email]);
   const isPasswordStrong = useMemo(() => PASSWORD_REGEX.test(password), [password]);
   const doPasswordsMatch = useMemo(
     () => confirmPassword === "" || password === confirmPassword,
     [confirmPassword, password]
   );
 
+  /**
+   * Submits the registration form
+   * Validates email and password rules locally before calling the account creation API
+   */
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+
+    if (!isEmailValid) {
+      setError(EMAIL_HINT);
+      return;
+    }
 
     if (!isPasswordStrong) {
       setError(PASSWORD_HINT);
@@ -37,7 +66,7 @@ function Register({ onSwitchToLogin, onRegisterSuccess }) {
     setLoading(true);
 
     try {
-      await registerUser({ username, password });
+      await registerUser({ username, email, password });
       onRegisterSuccess("Account created successfully. Please login.");
     } catch (apiError) {
       setError(apiError.message || "Unable to create your account.");
@@ -65,6 +94,21 @@ function Register({ onSwitchToLogin, onRegisterSuccess }) {
             required
           />
         </label>
+
+        <label>
+          Email
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+        </label>
+
+        <p className={`hint-text ${email && !isEmailValid ? "error-text" : ""}`}>
+          Email is collected for account recovery. Username remains your login.
+        </p>
 
         <label>
           Password
@@ -120,6 +164,10 @@ function Register({ onSwitchToLogin, onRegisterSuccess }) {
           <p className="status-message error">{PASSWORD_HINT}</p>
         ) : null}
 
+        {email && !isEmailValid ? (
+          <p className="status-message error">{EMAIL_HINT}</p>
+        ) : null}
+
         {confirmPassword && !doPasswordsMatch ? (
           <p className="status-message error">Passwords do not match.</p>
         ) : null}
@@ -129,7 +177,7 @@ function Register({ onSwitchToLogin, onRegisterSuccess }) {
         <button
           className="primary-button"
           type="submit"
-          disabled={loading || !isPasswordStrong || !confirmPassword || !doPasswordsMatch}
+          disabled={loading || !isEmailValid || !isPasswordStrong || !confirmPassword || !doPasswordsMatch}
         >
           {loading ? "Creating account..." : "Register"}
         </button>

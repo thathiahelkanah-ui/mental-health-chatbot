@@ -1,3 +1,7 @@
+/**
+ * File Purpose:
+ * Defines layout, theme colors, chat UI, authentication forms, and responsive behavior.
+ */
 :root {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   line-height: 1.5;
@@ -39,6 +43,10 @@ button {
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 }
 
+/**
+ * App Shell
+ * Provides the fixed top bar and page-level layout containers
+ */
 .app-shell {
   min-height: 100vh;
 }
@@ -134,6 +142,10 @@ body.dark .topbar-icon-button {
   color: #f9fafb;
 }
 
+/**
+ * Main Layout Modes
+ * Separates centered authentication screens from the full-height chat workspace
+ */
 .app-card {
   min-height: 100vh;
   padding-top: 60px;
@@ -196,6 +208,10 @@ body.dark .auth-toggle {
   background: rgba(30, 41, 59, 0.92);
 }
 
+/**
+ * Shared Buttons
+ * Sets base styles for primary, secondary, and tab-style actions
+ */
 .tab-button,
 .primary-button,
 .secondary-button {
@@ -225,6 +241,10 @@ body.dark .tab-button.active {
   box-shadow: none;
 }
 
+/**
+ * Authentication Forms
+ * Styles login and registration inputs, password toggles, and validation feedback
+ */
 .auth-form,
 .chat-input-row {
   display: flex;
@@ -385,6 +405,10 @@ body.dark .text-button {
   color: #a61b1b;
 }
 
+/**
+ * Chat Workspace
+ * Defines the side navigation, main chat panel, and responsive overlay behavior
+ */
 .chat-workspace {
   display: flex;
   min-height: calc(100vh - 60px);
@@ -456,6 +480,10 @@ body.dark .chat-sidebar {
   color: #ffffff;
 }
 
+/**
+ * Chat History List
+ * Styles saved chat rows, hover controls, and empty history states
+ */
 .chat-list {
   display: flex;
   flex: 1;
@@ -563,6 +591,10 @@ body.dark .history-delete-btn:hover {
   color: #f87171;
 }
 
+/**
+ * Delete Confirmation Modal
+ * Presents a focused confirmation dialog before removing a saved chat
+ */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -675,6 +707,10 @@ body.dark .sidebar-logout {
   display: none;
 }
 
+/**
+ * Mobile Sidebar Overlay
+ * Dims the chat area while the off-canvas sidebar is open
+ */
 .sidebar-overlay {
   position: fixed;
   inset: 60px 0 0;
@@ -690,6 +726,10 @@ body.dark .sidebar-logout {
   visibility: visible;
 }
 
+/**
+ * Chat Panel
+ * Controls message scrolling, thread width, and fixed input positioning
+ */
 .chat-panel {
   flex: 1;
   position: relative;
@@ -778,6 +818,10 @@ body.dark .input-container {
   min-width: 96px;
 }
 
+/**
+ * Message Bubbles
+ * Differentiates user and assistant messages with alignment, color, and timestamps
+ */
 .message-row {
   display: flex;
   width: 100%;
@@ -843,6 +887,10 @@ body.dark .message-time {
   color: #94a3b8;
 }
 
+/**
+ * Typing Indicator
+ * Animates the assistant loading state while a response is pending
+ */
 .typing-indicator {
   display: inline-flex;
   gap: 6px;
@@ -893,6 +941,10 @@ body.dark .status-message.success {
   color: #86efac;
 }
 
+/**
+ * Responsive Layout
+ * Adjusts spacing, sidebar width, and input sizing for smaller screens
+ */
 @media (max-width: 768px) {
   .app-card.auth-mode {
     padding: 92px 16px 24px;
@@ -965,6 +1017,10 @@ body.dark .status-message.success {
   }
 }
 
+/**
+ * Typing Animation
+ * Creates the staggered bounce used by the assistant typing dots
+ */
 @keyframes typing-bounce {
   0%,
   80%,
