@@ -37,6 +37,15 @@ function ResetPassword({ token, onResetSuccess, onBackToLogin }) {
       return;
     }
 
+    const passwordRegex = /^(?=.*[0-9]).{8,}$/;
+
+    if (!passwordRegex.test(password)) {
+      setError(
+        "Password must be at least 8 characters long and contain at least one number."
+      );
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
