@@ -1,6 +1,14 @@
+/**
+ * File Purpose:
+ * Verifies JWT bearer tokens and attaches the authenticated user to protected requests.
+ */
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
+/**
+ * Protects routes that require authentication
+ * Validates the bearer token and loads the matching user without the password field
+ */
 export const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;

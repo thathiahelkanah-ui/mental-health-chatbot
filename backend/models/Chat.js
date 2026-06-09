@@ -1,5 +1,13 @@
+/**
+ * File Purpose:
+ * Defines chat and message schemas for persisted conversation history.
+ */
 import mongoose from "mongoose";
 
+/**
+ * Chat Schema
+ * Stores chat sessions and conversation history for each user.
+ */
 const messageSchema = new mongoose.Schema(
   {
     role: {
@@ -16,12 +24,25 @@ const messageSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    createdAt: {
+      type: Date,
+    },
+    sentiment: {
+      type: String,
+    },
+    emotion: {
+      type: String,
+    },
   },
   {
     _id: false,
   }
 );
 
+/**
+ * Chat Model Definition
+ * Links a chat thread to a user and preserves its message history
+ */
 const chatSchema = new mongoose.Schema(
   {
     user: {
