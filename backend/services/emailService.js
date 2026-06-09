@@ -1,55 +1,34 @@
-/**
- * File Purpose:
- * Sends transactional email messages for account recovery workflows.
- */
-import nodemailer from "nodemailer";
+import SibApiV3Sdk from "sib-api-v3-sdk";
 
 /**
- * Creates the SMTP transporter used for password reset emails.
- */
-function createTransporter() {
-  console.log("[EMAIL] Host:", process.env.SMTP_HOST);
-  console.log("[EMAIL] Port:", process.env.SMTP_PORT);
-  console.log("[EMAIL] Secure:", process.env.SMTP_SECURE);
-  console.log("[EMAIL] User:", process.env.SMTP_USER);
-
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-
-    // Timeout settings for debugging SMTP connectivity
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-  });
-
-  transporter.verify((error) => {
-    if (error) {
-      console.error("[EMAIL] SMTP verification failed:", error);
-    } else {
-      console.log("[EMAIL] SMTP ready");
-    }
-  });
-
-  return transporter;
-}
-
-/**
- * Sends a password reset email.
+ * Sends password reset email using Brevo API.
  */
 export async function sendPasswordResetEmail(to, resetLink) {
-  const transporter = createTransporter();
+  try {
+    console.log("[EMAIL] Sending reset email to:", to);
 
-  return transporter.sendMail({
-    from: process.env.EMAIL_FROM || process.env.SMTP_USER,
-    to,
-    subject: "Chat Buddy Password Reset",
-    text: `Hello,
+    const defaultClient = SibApiV3Sdk.ApiClient.instance;
+
+    const apiKey = defaultClient.authentications["api-key"];
+    apiKey.apiKey = process.env.BREVO_API_KEY;
+
+    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+
+    await apiInstance.sendTransacEmail({
+      sender: {
+        name: "Chat Buddy",
+        email: "rohanbanghsingps4@gmail.com",
+      },
+
+      to: [
+        {
+          email: to,
+        },
+      ],
+
+      subject: "Chat Buddy Password Reset",
+
+      textContent: `Hello,
 
 You requested a password reset for your Chat Buddy account.
 
@@ -60,5 +39,15 @@ ${resetLink}
 This link expires in 15 minutes.
 
 If you did not request this reset, please ignore this email.`,
-  });
+    });
+
+    console.log("[EMAIL] Email sent successfully");
+  } catch (error) {
+    console.error(
+      "[EMAIL] Email send failed:",
+      error?.response?.body || error.message
+    );
+
+    throw error;
+  }
 }
